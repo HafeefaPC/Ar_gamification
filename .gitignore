@@ -68,3 +68,6 @@ yarn-error.log*
 Thumbs.db
 
 .node_modules
+
+# Flutter
+.env

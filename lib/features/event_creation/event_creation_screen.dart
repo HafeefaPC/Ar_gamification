@@ -2859,7 +2859,7 @@ Please wait a few minutes and check your wallet history.
                       event.eventCode,
                       style: AppTheme.modernTitle.copyWith(
                         fontSize: 16,
-                        color: AppTheme.primaryColor,
+                        color: AppTheme.accentColor,
                         letterSpacing: 2.0,
                         fontFamily: 'Courier',
                       ),

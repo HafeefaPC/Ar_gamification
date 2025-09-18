@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_dotenv: ^6.0.0
   flutter_localizations:
     sdk: flutter
 
@@ -155,5 +156,6 @@ flutter:
   assets:
     - assets/icons/
     - lib/shared/contracts/abis/
+    - .env
 
 

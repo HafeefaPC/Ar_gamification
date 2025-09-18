@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+
 
 /// A widget that displays the TOKON logo in pixel art style
 class TokonLogo extends StatelessWidget {

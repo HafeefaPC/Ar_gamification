@@ -45,11 +45,11 @@ class RetroARViewScreen extends ConsumerStatefulWidget {
   ConsumerState<RetroARViewScreen> createState() => _RetroARViewScreenState();
 }
 
-class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen> 
+class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
     with TickerProviderStateMixin {
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
-  
+
   late ARService arService;
   late SupabaseService supabaseService;
   late WalletService walletService;
@@ -66,12 +66,12 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
   int claimedCount = 0;
   int totalBoundaries = 0;
   Boundary? detectedBoundary;
-  
+
   // Performance optimization
   Timer? _arUpdateTimer;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   StreamSubscription<MagnetometerEvent>? _magnetometerSubscription;
-  
+
   // Enhanced NFT image cache
   final Map<String, Widget> _nftImageCache = {};
   final Map<String, DateTime> _imageCacheTimestamp = {};
@@ -83,10 +83,10 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
   double? _currentLatitude;
   double? _currentLongitude;
   double _deviceAzimuth = 0.0;
-  
+
   // AR Elements positioning
   List<ARElement> arElements = [];
-  
+
   // Animations
   late ConfettiController confettiController;
   late AnimationController pulseController;
@@ -111,8 +111,10 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
   }
 
   void _setupAnimations() {
-    confettiController = ConfettiController(duration: const Duration(seconds: 3));
-    
+    confettiController = ConfettiController(
+      duration: const Duration(seconds: 3),
+    );
+
     // Retro scanning pulse animation
     pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
@@ -158,11 +160,15 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
   }
 
   void _initializeSensors() {
-    _gyroscopeSubscription = gyroscopeEventStream().listen((GyroscopeEvent event) {
+    _gyroscopeSubscription = gyroscopeEventStream().listen((
+      GyroscopeEvent event,
+    ) {
       _throttledARUpdate();
     });
 
-    _magnetometerSubscription = magnetometerEventStream().listen((MagnetometerEvent event) {
+    _magnetometerSubscription = magnetometerEventStream().listen((
+      MagnetometerEvent event,
+    ) {
       double azimuth = atan2(event.y, event.x) * 180 / pi;
       if ((azimuth - _deviceAzimuth).abs() > 2.0) {
         setState(() {
@@ -172,7 +178,7 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
       }
     });
   }
-  
+
   void _throttledARUpdate() {
     _arUpdateTimer?.cancel();
     _arUpdateTimer = Timer(const Duration(milliseconds: 100), () {
@@ -183,74 +189,88 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
   }
 
   void _updateARPositions() {
-    if (_currentLatitude == null || _currentLongitude == null || boundaries.isEmpty) {
+    if (_currentLatitude == null ||
+        _currentLongitude == null ||
+        boundaries.isEmpty) {
       return;
     }
 
     List<ARElement> newElements = [];
-    
+
     for (Boundary boundary in boundaries) {
       // Skip if already claimed by anyone
       if (boundary.isClaimed) continue;
-      
-      double distance = boundary.distanceFrom(_currentLatitude!, _currentLongitude!);
-      
+
+      double distance = boundary.distanceFrom(
+        _currentLatitude!,
+        _currentLongitude!,
+      );
+
       // Only show boundaries within detection range
       if (distance > 10.0) continue;
-      
+
       // Calculate bearing and relative angle
       double bearing = _calculateBearing(
-        _currentLatitude!, _currentLongitude!, 
-        boundary.latitude, boundary.longitude
+        _currentLatitude!,
+        _currentLongitude!,
+        boundary.latitude,
+        boundary.longitude,
       );
       double relativeAngle = bearing - _deviceAzimuth;
-      
+
       // Normalize angle
       while (relativeAngle > 180) relativeAngle -= 360;
       while (relativeAngle < -180) relativeAngle += 360;
-      
+
       // Only show if within field of view
       if (relativeAngle.abs() > 90) continue;
-      
+
       // Calculate screen coordinates
       double screenWidth = MediaQuery.of(context).size.width;
       double screenHeight = MediaQuery.of(context).size.height;
-      
+
       double screenX = screenWidth / 2 + (relativeAngle * screenWidth / 180);
       double screenY = screenHeight * 0.4 + (distance * 15);
-      
+
       // Add some variation for natural positioning
       screenX += (Random().nextDouble() - 0.5) * 30;
       screenY += (Random().nextDouble() - 0.5) * 20;
-      
+
       // Clamp to screen bounds
       screenX = screenX.clamp(80.0, screenWidth - 80.0);
       screenY = screenY.clamp(180.0, screenHeight - 280.0);
-      
+
       bool isClaimable = distance <= (boundary.radius ?? 2.0);
       bool isVisible = distance <= 15.0;
-      
-      print('Boundary ${boundary.name}: distance=$distance, radius=${boundary.radius}, isClaimable=$isClaimable');
-      
-      newElements.add(ARElement(
-        boundary: boundary,
-        screenX: screenX,
-        screenY: screenY,
-        distance: distance,
-        isClaimable: isClaimable,
-        isVisible: isVisible,
-      ));
+
+      print(
+        'Boundary ${boundary.name}: distance=$distance, radius=${boundary.radius}, isClaimable=$isClaimable',
+      );
+
+      newElements.add(
+        ARElement(
+          boundary: boundary,
+          screenX: screenX,
+          screenY: screenY,
+          distance: distance,
+          isClaimable: isClaimable,
+          isVisible: isVisible,
+        ),
+      );
     }
-    
+
     setState(() {
       arElements = newElements;
       if (arElements.isNotEmpty) {
-        final closest = arElements.reduce((a, b) => a.distance < b.distance ? a : b);
+        final closest = arElements.reduce(
+          (a, b) => a.distance < b.distance ? a : b,
+        );
         if (closest.isClaimable) {
           proximityHint = "▸ TARGET ACQUIRED - TAP TO CLAIM!";
           detectedBoundary = closest.boundary;
         } else {
-          proximityHint = "▸ SCANNING... ${closest.distance.toStringAsFixed(1)}M TO TARGET";
+          proximityHint =
+              "▸ SCANNING... ${closest.distance.toStringAsFixed(1)}M TO TARGET";
         }
       } else {
         proximityHint = "▸ NO TARGETS IN RANGE - KEEP EXPLORING";
@@ -262,10 +282,11 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
     double dLon = (lon2 - lon1) * pi / 180;
     double lat1Rad = lat1 * pi / 180;
     double lat2Rad = lat2 * pi / 180;
-    
+
     double y = sin(dLon) * cos(lat2Rad);
-    double x = cos(lat1Rad) * sin(lat2Rad) - sin(lat1Rad) * cos(lat2Rad) * cos(dLon);
-    
+    double x =
+        cos(lat1Rad) * sin(lat2Rad) - sin(lat1Rad) * cos(lat2Rad) * cos(dLon);
+
     double bearing = atan2(y, x) * 180 / pi;
     return (bearing + 360) % 360;
   }
@@ -276,12 +297,12 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
       print('Received event code: "${widget.eventCode}"');
       print('Event code length: ${widget.eventCode.length}');
       print('Event code is empty: ${widget.eventCode.isEmpty}');
-      
+
       setState(() {
         isLoading = true;
         proximityHint = "▸ LOADING EVENT DATA...";
       });
-      
+
       if (widget.eventCode.isEmpty) {
         print('ERROR: Event code is empty!');
         setState(() {
@@ -290,18 +311,22 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
         });
         return;
       }
-      
+
       // First, let's see what event codes are available in the database
       print('=== CHECKING AVAILABLE EVENT CODES ===');
       final availableEventCodes = await supabaseService.getAllEventCodes();
       print('Available event codes: $availableEventCodes');
-      
+
       // Test if the event code exists before trying to load it
       print('Testing if event code exists: ${widget.eventCode}');
-      final eventExists = await supabaseService.testEventCodeExists(widget.eventCode);
-      
+      final eventExists = await supabaseService.testEventCodeExists(
+        widget.eventCode,
+      );
+
       if (!eventExists) {
-        print('ERROR: Event code ${widget.eventCode} does not exist in database');
+        print(
+          'ERROR: Event code ${widget.eventCode} does not exist in database',
+        );
         print('Available event codes: $availableEventCodes');
         setState(() {
           isLoading = false;
@@ -309,26 +334,28 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
         });
         return;
       }
-      
+
       print('Event code exists, proceeding to load event data...');
       print('Calling getEventByCode with: ${widget.eventCode}');
-      
+
       currentEvent = await supabaseService.getEventByCode(widget.eventCode);
-      
-      print('getEventByCode result: ${currentEvent != null ? "SUCCESS" : "FAILED"}');
+
+      print(
+        'getEventByCode result: ${currentEvent != null ? "SUCCESS" : "FAILED"}',
+      );
       if (currentEvent != null) {
         print('Event loaded successfully:');
         print('  - Name: ${currentEvent!.name}');
         print('  - ID: ${currentEvent!.id}');
         print('  - Event Code: ${currentEvent!.eventCode}');
         print('  - Boundaries count: ${currentEvent!.boundaries.length}');
-        
+
         boundaries = currentEvent!.boundaries;
         totalBoundaries = boundaries.length;
-        
+
         // Load claimed boundaries for this event
         await _loadClaimedBoundaries();
-        
+
         await arService.setEvent(currentEvent!);
         arService.onBoundaryDetected = _onBoundaryDetected;
         arService.onBoundaryClaimed = _onBoundaryClaimed;
@@ -337,9 +364,9 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
         arService.onVisibleBoundariesUpdate = _onVisibleBoundariesUpdate;
         arService.onClaimedBoundariesUpdate = _onClaimedBoundariesUpdate;
         arService.onPositionUpdate = _onPositionUpdate;
-        
+
         await arService.initializeAR();
-        
+
         setState(() {
           isLoading = false;
           proximityHint = "▸ EVENT LOADED - AR ACTIVE";
@@ -365,11 +392,13 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
 
   Future<void> _loadClaimedBoundaries() async {
     try {
-      final claimed = await supabaseService.getClaimedBoundariesForEvent(currentEvent!.id);
+      final claimed = await supabaseService.getClaimedBoundariesForEvent(
+        currentEvent!.id,
+      );
       setState(() {
         claimedBoundaries = claimed;
         claimedCount = claimed.length;
-        
+
         // Update boundaries list to reflect claimed status
         for (int i = 0; i < boundaries.length; i++) {
           final claimedBoundary = claimed.firstWhere(
@@ -401,13 +430,13 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
       claimedCount = claimedBoundaries.length;
       detectedBoundary = null;
       proximityHint = "▸ CLAIM SUCCESSFUL - KEEP EXPLORING!";
-      
+
       final index = boundaries.indexWhere((b) => b.id == boundary.id);
       if (index != -1) {
         boundaries[index] = boundaries[index].copyWith(isClaimed: true);
       }
     });
-    
+
     confettiController.play();
     _showRetroClaimSuccessDialog(boundary);
     _updateARPositions();
@@ -452,7 +481,10 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
     _updateARPositions();
   }
 
-  Future<void> _claimBoundary(ARElement element, WalletConnectionState walletState) async {
+  Future<void> _claimBoundary(
+    ARElement element,
+    WalletConnectionState walletState,
+  ) async {
     try {
       print('=== CLAIMING BOUNDARY ===');
       print('Boundary ID: ${element.boundary.id}');
@@ -460,23 +492,22 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
       print('Is Claimable: ${element.isClaimable}');
       print('Distance: ${element.distance}');
       print('Current claimed count: $claimedCount');
-      
+
       setState(() {
         proximityHint = "▸ CLAIMING BOUNDARY...";
       });
 
-      final walletAddress = walletState.walletAddress != null 
-          ? '${walletState.walletAddress!.substring(0, 6)}...${walletState.walletAddress!.substring(walletState.walletAddress!.length - 4)}'
-          : 'Unknown';
+      final walletAddress = walletState.walletAddress ?? 'Unknown';
       print('Using wallet address: $walletAddress');
-      
+
       // Enhanced claim with all necessary database updates
       print('Calling claimBoundaryWithFullUpdate...');
       final success = await supabaseService.claimBoundaryWithFullUpdate(
         boundaryId: element.boundary.id,
         claimedBy: walletAddress,
         distance: element.distance,
-        claimTxHash: 'tx_${DateTime.now().millisecondsSinceEpoch}', // Would be real tx hash
+        claimTxHash:
+            'tx_${DateTime.now().millisecondsSinceEpoch}', // Would be real tx hash
         nftMetadata: {
           'name': element.boundary.name,
           'description': element.boundary.description,
@@ -489,9 +520,9 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
           'event': currentEvent?.name,
         },
       );
-      
+
       print('Claim result: $success');
-      
+
       if (success) {
         print('Claim successful, updating local state...');
         // Update local state
@@ -500,18 +531,20 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
           claimedBy: walletAddress,
           claimedAt: DateTime.now(),
         );
-        
+
         arService.claimBoundary(updatedBoundary);
-        
+
         setState(() {
-          final index = boundaries.indexWhere((b) => b.id == element.boundary.id);
+          final index = boundaries.indexWhere(
+            (b) => b.id == element.boundary.id,
+          );
           if (index != -1) {
             boundaries[index] = updatedBoundary;
           }
           claimedBoundaries.add(updatedBoundary);
           claimedCount = claimedBoundaries.length;
         });
-        
+
         print('Local state updated, claimed count: $claimedCount');
         _updateARPositions();
       } else {
@@ -519,7 +552,7 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
         setState(() {
           proximityHint = "▸ CLAIM FAILED - ALREADY CLAIMED";
         });
-        
+
         // Reload event data to sync with server
         await _loadEventData();
       }
@@ -542,20 +575,29 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: AppTheme.primaryColor,
-            border: Border.all(color: Color.fromARGB(255, 122, 185, 203),width: 3),
+            border: Border.all(
+              color: Color.fromARGB(255, 122, 185, 203),
+              width: 3,
+            ),
           ),
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: AppTheme.primaryColor,
-              border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+              border: Border.all(
+                color: Color.fromARGB(255, 122, 185, 203),
+                width: 2,
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Retro success header
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 16,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.textColor,
                     border: Border.all(color: AppTheme.textColor, width: 2),
@@ -571,7 +613,7 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // NFT display
                 Container(
                   width: 100,
@@ -583,7 +625,7 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
                   child: _buildImageWithRetry(boundary.imageUrl),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Boundary info
                 Text(
                   boundary.name.toUpperCase(),
@@ -596,7 +638,7 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                
+
                 Text(
                   boundary.description.toUpperCase(),
                   style: TextStyle(
@@ -607,12 +649,15 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Retro continue button
                 GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 24,
+                    ),
                     decoration: BoxDecoration(
                       color: Color.fromARGB(255, 122, 185, 203),
                       border: Border.all(color: AppTheme.textColor, width: 2),
@@ -635,135 +680,139 @@ class _RetroARViewScreenState extends ConsumerState<RetroARViewScreen>
       ),
     );
   }
-Widget _buildPixelatedNFTImage(String imageUrl) {
-  // Debug logging
-  print('Building NFT image for URL: $imageUrl');
-  print('URL type: ${imageUrl.runtimeType}');
-  print('URL starts with http: ${imageUrl.startsWith('http')}');
-  print('URL starts with https: ${imageUrl.startsWith('https')}');
-  
-  // Check if it's a valid network URL first
-  if (!imageUrl.startsWith('http') && !imageUrl.startsWith('https')) {
-    print('Invalid image URL format, showing default NFT: $imageUrl');
-    return _buildDefaultPixelatedNFT();
+
+  Widget _buildPixelatedNFTImage(String imageUrl) {
+    // Debug logging
+    print('Building NFT image for URL: $imageUrl');
+    print('URL type: ${imageUrl.runtimeType}');
+    print('URL starts with http: ${imageUrl.startsWith('http')}');
+    print('URL starts with https: ${imageUrl.startsWith('https')}');
+
+    // Check if it's a valid network URL first
+    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('https')) {
+      print('Invalid image URL format, showing default NFT: $imageUrl');
+      return _buildDefaultPixelatedNFT();
+    }
+
+    // Don't use cache for now to debug - we'll re-enable after fixing
+    print('Loading fresh network image from: $imageUrl');
+
+    return ClipRect(
+      child: Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        // Remove FilterQuality.none temporarily to test
+        filterQuality: FilterQuality.low,
+
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) {
+            print('Image loaded successfully: $imageUrl');
+            return child;
+          }
+
+          // Show loading progress
+          return Container(
+            color: Color.fromARGB(255, 122, 185, 203),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.textColor, width: 1),
+                    ),
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                          : null,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.textColor,
+                      ),
+                      backgroundColor: Color.fromARGB(255, 122, 185, 203),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'LOADING',
+                    style: TextStyle(
+                      fontFamily: 'Courier',
+                      color: AppTheme.textColor,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+
+        errorBuilder: (context, error, stackTrace) {
+          print('=== IMAGE LOAD ERROR ===');
+          print('Error: $error');
+          print('Image URL: $imageUrl');
+          print('Error type: ${error.runtimeType}');
+          print('Stack trace: $stackTrace');
+
+          // Show detailed error info
+          return Container(
+            color: Color.fromARGB(255, 122, 185, 203),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: AppTheme.textColor,
+                    size: 20,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'LOAD ERROR',
+                    style: TextStyle(
+                      fontFamily: 'Courier',
+                      color: AppTheme.textColor,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    error.toString().length > 30
+                        ? '${error.toString().substring(0, 30)}...'
+                        : error.toString(),
+                    style: TextStyle(
+                      fontFamily: 'Courier',
+                      color: AppTheme.textColor,
+                      fontSize: 6,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          return AnimatedOpacity(
+            opacity: frame == null ? 0.5 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            child: child,
+          );
+        },
+      ),
+    );
   }
-  
-  // Don't use cache for now to debug - we'll re-enable after fixing
-  print('Loading fresh network image from: $imageUrl');
-  
-  return ClipRect(
-    child: Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      // Remove FilterQuality.none temporarily to test
-      filterQuality: FilterQuality.low,
-      
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) {
-          print('Image loaded successfully: $imageUrl');
-          return child;
-        }
-        
-        // Show loading progress
-        return Container(
-          color: Color.fromARGB(255, 122, 185, 203),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppTheme.textColor, width: 1),
-                  ),
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                        : null,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.textColor),
-                    backgroundColor: Color.fromARGB(255, 122, 185, 203),
-                    strokeWidth: 2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'LOADING',
-                  style: TextStyle(
-                    fontFamily: 'Courier',
-                    color: AppTheme.textColor,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      
-      errorBuilder: (context, error, stackTrace) {
-        print('=== IMAGE LOAD ERROR ===');
-        print('Error: $error');
-        print('Image URL: $imageUrl');
-        print('Error type: ${error.runtimeType}');
-        print('Stack trace: $stackTrace');
-        
-        // Show detailed error info
-        return Container(
-          color: Color.fromARGB(255, 122, 185, 203),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  color: AppTheme.textColor,
-                  size: 20,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'LOAD ERROR',
-                  style: TextStyle(
-                    fontFamily: 'Courier',
-                    color: AppTheme.textColor,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  error.toString().length > 30 
-                      ? '${error.toString().substring(0, 30)}...' 
-                      : error.toString(),
-                  style: TextStyle(
-                    fontFamily: 'Courier',
-                    color: AppTheme.textColor,
-                    fontSize: 6,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded) return child;
-        return AnimatedOpacity(
-          opacity: frame == null ? 0.5 : 1.0,
-          duration: const Duration(milliseconds: 200),
-          child: child,
-        );
-      },
-    ),
-  );
-}
 
   Widget _buildDefaultPixelatedNFT() {
     return Container(
@@ -803,241 +852,65 @@ Widget _buildPixelatedNFTImage(String imageUrl) {
     );
   }
 
+  void _testSingleImageLoad() async {
+    if (currentEvent == null || currentEvent!.boundaries.isEmpty) {
+      print('No boundaries to test');
+      return;
+    }
 
-void _testSingleImageLoad() async {
-  if (currentEvent == null || currentEvent!.boundaries.isEmpty) {
-    print('No boundaries to test');
-    return;
-  }
-  
-  final testBoundary = currentEvent!.boundaries.first;
-  final testUrl = testBoundary.imageUrl;
-  
-  print('=== TESTING SINGLE IMAGE LOAD ===');
-  print('Test URL: $testUrl');
-  
-  // Test in a simple widget
-  showDialog(
-    context: context,
-    builder: (context) => Dialog(
-      child: Container(
-        width: 200,
-        height: 200,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text('Testing Image Load'),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.green, width: 2),
-                ),
-                child: Image.network(
-                  testUrl,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) {
-                      print('TEST IMAGE LOADED SUCCESSFULLY');
-                      return child;
-                    }
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    print('TEST IMAGE ERROR: $error');
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error, color: Colors.red),
-                          Text('Error: $error'),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Close'),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+    final testBoundary = currentEvent!.boundaries.first;
+    final testUrl = testBoundary.imageUrl;
 
-// Add the SHOW ALL button method:
-void _showAllImagesTest() {
-  if (currentEvent == null || currentEvent!.boundaries.isEmpty) {
-    print('No boundaries to test');
-    return;
-  }
-  
-  showDialog(
-    context: context,
-    builder: (context) => Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Color.fromARGB(255, 122, 185, 203),
-          border: Border.all(color: AppTheme.textColor, width: 3),
-        ),
+    print('=== TESTING SINGLE IMAGE LOAD ===');
+    print('Test URL: $testUrl');
+
+    // Test in a simple widget
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
         child: Container(
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor,
-            border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
-          ),
+          width: 200,
+          height: 200,
+          padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.textColor,
-                  border: Border(
-                    bottom: BorderSide(color: Color.fromARGB(255, 122, 185, 203), width: 2),
-                  ),
-                ),
-                child: Text(
-                  '>>> ALL IMAGES TEST <<<',
-                  style: TextStyle(
-                    fontFamily: 'Courier',
-                    color: AppTheme.primaryColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              Text('Testing Image Load'),
+              const SizedBox(height: 16),
               Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.all(12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    childAspectRatio: 1,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.green, width: 2),
                   ),
-                  itemCount: currentEvent!.boundaries.length,
-                  itemBuilder: (context, index) {
-                    final boundary = currentEvent!.boundaries[index];
-                    return Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.textColor, width: 2),
-                        color: Color.fromARGB(255, 122, 185, 203),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            color: AppTheme.textColor,
-                            child: Text(
-                              boundary.name.toUpperCase(),
-                              style: TextStyle(
-                                fontFamily: 'Courier',
-                                color: AppTheme.primaryColor,
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildPixelatedNFTImage(boundary.imageUrl),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 122, 185, 203),
-                      border: Border.all(color: AppTheme.textColor, width: 2),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '[ CLOSE ]',
-                        style: TextStyle(
-                          fontFamily: 'Courier',
-                          color: AppTheme.textColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                  child: Image.network(
+                    testUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) {
+                        print('TEST IMAGE LOADED SUCCESSFULLY');
+                        return child;
+                      }
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      print('TEST IMAGE ERROR: $error');
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error, color: Colors.red),
+                            Text('Error: $error'),
+                          ],
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-// And update your _buildImageWithRetry method:
-Widget _buildImageWithRetry(String imageUrl) {
-  print('=== BUILDING IMAGE WITH RETRY ===');
-  print('Image URL: $imageUrl');
-  print('URL type: ${imageUrl.runtimeType}');
-  print('URL length: ${imageUrl.length}');
-  print('URL starts with http: ${imageUrl.startsWith('http')}');
-  print('URL starts with https: ${imageUrl.startsWith('https')}');
-  print('URL contains supabase: ${imageUrl.contains('supabase')}');
-  print('URL contains storage: ${imageUrl.contains('storage')}');
-  
-  // Validate URL format
-  if (imageUrl.isEmpty || (!imageUrl.startsWith('http') && !imageUrl.startsWith('https'))) {
-    print('Invalid URL format, showing default');
-    return _buildDefaultPixelatedNFT();
-  }
-  
-  // Check if we've had an error loading this image
-  if (_imageLoadErrors[imageUrl] == true) {
-    print('Image has previous error, showing retry button');
-    return GestureDetector(
-      onTap: () {
-        print('Retry button tapped for: $imageUrl');
-        // Clear error and retry
-        _imageLoadErrors.remove(imageUrl);
-        _nftImageCache.remove(imageUrl);
-        _imageCacheTimestamp.remove(imageUrl);
-        setState(() {}); // Trigger rebuild
-      },
-      child: Container(
-        color: Color.fromARGB(255, 122, 185, 203),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.refresh,
-                color: AppTheme.textColor,
-                size: 20,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'TAP TO RETRY',
-                style: TextStyle(
-                  fontFamily: 'Courier',
-                  color: AppTheme.textColor,
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
-                ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('Close'),
               ),
             ],
           ),
@@ -1046,12 +919,197 @@ Widget _buildImageWithRetry(String imageUrl) {
     );
   }
 
-  return _buildPixelatedNFTImage(imageUrl);
-}
+  // Add the SHOW ALL button method:
+  void _showAllImagesTest() {
+    if (currentEvent == null || currentEvent!.boundaries.isEmpty) {
+      print('No boundaries to test');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.8,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Color.fromARGB(255, 122, 185, 203),
+            border: Border.all(color: AppTheme.textColor, width: 3),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor,
+              border: Border.all(
+                color: Color.fromARGB(255, 122, 185, 203),
+                width: 2,
+              ),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.textColor,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Color.fromARGB(255, 122, 185, 203),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '>>> ALL IMAGES TEST <<<',
+                    style: TextStyle(
+                      fontFamily: 'Courier',
+                      color: AppTheme.primaryColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 1,
+                        ),
+                    itemCount: currentEvent!.boundaries.length,
+                    itemBuilder: (context, index) {
+                      final boundary = currentEvent!.boundaries[index];
+                      return Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppTheme.textColor,
+                            width: 2,
+                          ),
+                          color: Color.fromARGB(255, 122, 185, 203),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              color: AppTheme.textColor,
+                              child: Text(
+                                boundary.name.toUpperCase(),
+                                style: TextStyle(
+                                  fontFamily: 'Courier',
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildPixelatedNFTImage(boundary.imageUrl),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 122, 185, 203),
+                        border: Border.all(color: AppTheme.textColor, width: 2),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '[ CLOSE ]',
+                          style: TextStyle(
+                            fontFamily: 'Courier',
+                            color: AppTheme.textColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // And update your _buildImageWithRetry method:
+  Widget _buildImageWithRetry(String imageUrl) {
+    print('=== BUILDING IMAGE WITH RETRY ===');
+    print('Image URL: $imageUrl');
+    print('URL type: ${imageUrl.runtimeType}');
+    print('URL length: ${imageUrl.length}');
+    print('URL starts with http: ${imageUrl.startsWith('http')}');
+    print('URL starts with https: ${imageUrl.startsWith('https')}');
+    print('URL contains supabase: ${imageUrl.contains('supabase')}');
+    print('URL contains storage: ${imageUrl.contains('storage')}');
+
+    // Validate URL format
+    if (imageUrl.isEmpty ||
+        (!imageUrl.startsWith('http') && !imageUrl.startsWith('https'))) {
+      print('Invalid URL format, showing default');
+      return _buildDefaultPixelatedNFT();
+    }
+
+    // Check if we've had an error loading this image
+    if (_imageLoadErrors[imageUrl] == true) {
+      print('Image has previous error, showing retry button');
+      return GestureDetector(
+        onTap: () {
+          print('Retry button tapped for: $imageUrl');
+          // Clear error and retry
+          _imageLoadErrors.remove(imageUrl);
+          _nftImageCache.remove(imageUrl);
+          _imageCacheTimestamp.remove(imageUrl);
+          setState(() {}); // Trigger rebuild
+        },
+        child: Container(
+          color: Color.fromARGB(255, 122, 185, 203),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.refresh, color: AppTheme.textColor, size: 20),
+                const SizedBox(height: 4),
+                Text(
+                  'TAP TO RETRY',
+                  style: TextStyle(
+                    fontFamily: 'Courier',
+                    color: AppTheme.textColor,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return _buildPixelatedNFTImage(imageUrl);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final walletState =  ref.watch(walletConnectionProvider);
+    final walletState = ref.watch(walletConnectionProvider);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -1067,7 +1125,9 @@ Widget _buildImageWithRetry(String imageUrl) {
                   animation: scanlineAnimation,
                   builder: (context, child) {
                     return Positioned(
-                      top: MediaQuery.of(context).size.height * scanlineAnimation.value,
+                      top:
+                          MediaQuery.of(context).size.height *
+                          scanlineAnimation.value,
                       left: 0,
                       right: 0,
                       child: Container(
@@ -1089,19 +1149,19 @@ Widget _buildImageWithRetry(String imageUrl) {
             )
           else
             _buildRetroLoadingScreen(),
-          
+
           // AR Overlay
           _buildRetroAROverlay(walletState),
-          
+
           // Top UI
           _buildRetroTopOverlay(),
-          
+
           // Bottom UI
           _buildRetroBottomOverlay(),
-          
+
           // Loading overlay
           if (isLoading) _buildRetroLoadingOverlay(),
-          
+
           // Confetti
           Align(
             alignment: Alignment.topCenter,
@@ -1113,7 +1173,11 @@ Widget _buildImageWithRetry(String imageUrl) {
               emissionFrequency: 0.05,
               numberOfParticles: 50,
               gravity: 0.1,
-              colors: [AppTheme.textColor, Color.fromARGB(255, 122, 185, 203), AppTheme.textColor],
+              colors: [
+                AppTheme.textColor,
+                Color.fromARGB(255, 122, 185, 203),
+                AppTheme.textColor,
+              ],
             ),
           ),
         ],
@@ -1132,7 +1196,10 @@ Widget _buildImageWithRetry(String imageUrl) {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor,
-                border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 3),
+                border: Border.all(
+                  color: Color.fromARGB(255, 122, 185, 203),
+                  width: 3,
+                ),
               ),
               child: Column(
                 children: [
@@ -1150,8 +1217,16 @@ Widget _buildImageWithRetry(String imageUrl) {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: Color.fromARGB(255, 122, 185, 203).withOpacity(scanlineAnimation.value),
-                              border: Border.all(color: AppTheme.textColor, width: 1),
+                              color: Color.fromARGB(
+                                255,
+                                122,
+                                185,
+                                203,
+                              ).withOpacity(scanlineAnimation.value),
+                              border: Border.all(
+                                color: AppTheme.textColor,
+                                width: 1,
+                              ),
                             ),
                           );
                         },
@@ -1190,7 +1265,7 @@ Widget _buildImageWithRetry(String imageUrl) {
     return Stack(
       children: arElements.map((element) {
         if (!element.isVisible) return const SizedBox.shrink();
-        
+
         return Positioned(
           left: element.screenX - 60,
           top: element.screenY - 60,
@@ -1201,22 +1276,26 @@ Widget _buildImageWithRetry(String imageUrl) {
               }
             },
             child: AnimatedBuilder(
-              animation: element.isClaimable ? pulseAnimation : scanlineAnimation,
+              animation: element.isClaimable
+                  ? pulseAnimation
+                  : scanlineAnimation,
               builder: (context, child) {
                 return Container(
                   width: 120,
                   height: 140,
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: element.isClaimable 
-                          ? AppTheme.textColor 
+                      color: element.isClaimable
+                          ? AppTheme.textColor
                           : Color.fromARGB(255, 122, 185, 203),
-                      width: element.isClaimable 
-                          ? 3 + (pulseAnimation.value * 2) 
+                      width: element.isClaimable
+                          ? 3 + (pulseAnimation.value * 2)
                           : 2,
                     ),
                     color: element.isClaimable
-                        ? AppTheme.primaryColor.withOpacity(0.8 + pulseAnimation.value * 0.2)
+                        ? AppTheme.primaryColor.withOpacity(
+                            0.8 + pulseAnimation.value * 0.2,
+                          )
                         : AppTheme.primaryColor.withOpacity(0.6),
                   ),
                   child: Column(
@@ -1225,8 +1304,8 @@ Widget _buildImageWithRetry(String imageUrl) {
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 4),
-                        color: element.isClaimable 
-                            ? AppTheme.textColor 
+                        color: element.isClaimable
+                            ? AppTheme.textColor
                             : Color.fromARGB(255, 122, 185, 203),
                         child: Text(
                           element.isClaimable ? 'TARGET' : 'DETECTED',
@@ -1239,15 +1318,15 @@ Widget _buildImageWithRetry(String imageUrl) {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      
+
                       // NFT Image
                       Expanded(
                         child: Container(
                           margin: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: element.isClaimable 
-                                  ? AppTheme.textColor 
+                              color: element.isClaimable
+                                  ? AppTheme.textColor
                                   : Color.fromARGB(255, 122, 185, 203),
                               width: 1,
                             ),
@@ -1255,12 +1334,17 @@ Widget _buildImageWithRetry(String imageUrl) {
                           child: Column(
                             children: [
                               Expanded(
-                                child: _buildImageWithRetry(element.boundary.imageUrl),
+                                child: _buildImageWithRetry(
+                                  element.boundary.imageUrl,
+                                ),
                               ),
                               // Debug: Show image URL
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                  vertical: 1,
+                                ),
                                 color: AppTheme.primaryColor,
                                 child: Text(
                                   'URL: ${element.boundary.imageUrl.length > 15 ? '${element.boundary.imageUrl.substring(0, 15)}...' : element.boundary.imageUrl}',
@@ -1278,17 +1362,17 @@ Widget _buildImageWithRetry(String imageUrl) {
                           ),
                         ),
                       ),
-                      
+
                       // Action indicator
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 2),
-                        color: element.isClaimable 
+                        color: element.isClaimable
                             ? AppTheme.textColor
                             : Color.fromARGB(255, 122, 185, 203),
                         child: Text(
-                          element.isClaimable 
-                              ? 'TAP TO CLAIM' 
+                          element.isClaimable
+                              ? 'TAP TO CLAIM'
                               : '${element.distance.toStringAsFixed(1)}M',
                           style: TextStyle(
                             fontFamily: 'Courier',
@@ -1321,7 +1405,10 @@ Widget _buildImageWithRetry(String imageUrl) {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor,
-                border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+                border: Border.all(
+                  color: Color.fromARGB(255, 122, 185, 203),
+                  width: 2,
+                ),
               ),
               child: Row(
                 children: [
@@ -1360,8 +1447,7 @@ Widget _buildImageWithRetry(String imageUrl) {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  
-                
+
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: _showImageDebugInfo,
@@ -1369,7 +1455,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: AppTheme.textColor,
-                        border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 1),
+                        border: Border.all(
+                          color: Color.fromARGB(255, 122, 185, 203),
+                          width: 1,
+                        ),
                       ),
                       child: Text(
                         'MORE',
@@ -1386,13 +1475,16 @@ Widget _buildImageWithRetry(String imageUrl) {
               ),
             ),
             const SizedBox(height: 12),
-            
+
             // Proximity hint with retro styling
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor,
-                border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+                border: Border.all(
+                  color: Color.fromARGB(255, 122, 185, 203),
+                  width: 2,
+                ),
               ),
               child: Column(
                 children: [
@@ -1405,8 +1497,13 @@ Widget _buildImageWithRetry(String imageUrl) {
                             width: 16,
                             height: 16,
                             decoration: BoxDecoration(
-                              color: AppTheme.textColor.withOpacity(scanlineAnimation.value),
-                              border: Border.all(color: AppTheme.textColor, width: 1),
+                              color: AppTheme.textColor.withOpacity(
+                                scanlineAnimation.value,
+                              ),
+                              border: Border.all(
+                                color: AppTheme.textColor,
+                                width: 1,
+                              ),
                             ),
                           );
                         },
@@ -1428,7 +1525,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                   if (arElements.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Color.fromARGB(255, 122, 185, 203),
                         border: Border.all(color: AppTheme.textColor, width: 1),
@@ -1448,13 +1548,16 @@ Widget _buildImageWithRetry(String imageUrl) {
               ),
             ),
             const SizedBox(height: 12),
-            
+
             // Progress display
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor,
-                border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+                border: Border.all(
+                  color: Color.fromARGB(255, 122, 185, 203),
+                  width: 2,
+                ),
               ),
               child: Column(
                 children: [
@@ -1482,24 +1585,30 @@ Widget _buildImageWithRetry(String imageUrl) {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  
+
                   // Retro progress bar
                   Container(
                     height: 16,
                     decoration: BoxDecoration(
-                      border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 1),
+                      border: Border.all(
+                        color: Color.fromARGB(255, 122, 185, 203),
+                        width: 1,
+                      ),
                     ),
                     child: Stack(
                       children: [
                         Container(color: AppTheme.primaryColor),
                         FractionallySizedBox(
-                          widthFactor: totalBoundaries > 0 
-                              ? (claimedCount / totalBoundaries).clamp(0.0, 1.0) 
+                          widthFactor: totalBoundaries > 0
+                              ? (claimedCount / totalBoundaries).clamp(0.0, 1.0)
                               : 0,
                           child: Container(
                             decoration: BoxDecoration(
                               color: AppTheme.textColor,
-                              border: Border.all(color: AppTheme.textColor, width: 1),
+                              border: Border.all(
+                                color: AppTheme.textColor,
+                                width: 1,
+                              ),
                             ),
                           ),
                         ),
@@ -1526,10 +1635,7 @@ Widget _buildImageWithRetry(String imageUrl) {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.transparent,
-              Colors.black.withOpacity(0.8),
-            ],
+            colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
           ),
         ),
         child: SafeArea(
@@ -1539,7 +1645,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                 child: GestureDetector(
                   onTap: _showRetroClaimedBoundaries,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryColor,
                       border: Border.all(color: AppTheme.textColor, width: 2),
@@ -1563,10 +1672,16 @@ Widget _buildImageWithRetry(String imageUrl) {
                 child: GestureDetector(
                   onTap: _showRetroEventInfo,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryColor,
-                      border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+                      border: Border.all(
+                        color: Color.fromARGB(255, 122, 185, 203),
+                        width: 2,
+                      ),
                     ),
                     child: Center(
                       child: Text(
@@ -1597,7 +1712,10 @@ Widget _buildImageWithRetry(String imageUrl) {
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: AppTheme.primaryColor,
-            border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 3),
+            border: Border.all(
+              color: Color.fromARGB(255, 122, 185, 203),
+              width: 3,
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1610,7 +1728,12 @@ Widget _buildImageWithRetry(String imageUrl) {
                     height: 60,
                     decoration: BoxDecoration(
                       border: Border.all(color: AppTheme.textColor, width: 2),
-                      color: Color.fromARGB(255, 122, 185, 203).withOpacity(scanlineAnimation.value * 0.5),
+                      color: Color.fromARGB(
+                        255,
+                        122,
+                        185,
+                        203,
+                      ).withOpacity(scanlineAnimation.value * 0.5),
                     ),
                     child: Center(
                       child: Text(
@@ -1667,7 +1790,10 @@ Widget _buildImageWithRetry(String imageUrl) {
           child: Container(
             decoration: BoxDecoration(
               color: AppTheme.primaryColor,
-              border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+              border: Border.all(
+                color: Color.fromARGB(255, 122, 185, 203),
+                width: 2,
+              ),
             ),
             child: Column(
               children: [
@@ -1676,7 +1802,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                   decoration: BoxDecoration(
                     color: AppTheme.textColor,
                     border: Border(
-                      bottom: BorderSide(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+                      bottom: BorderSide(
+                        color: Color.fromARGB(255, 122, 185, 203),
+                        width: 2,
+                      ),
                     ),
                   ),
                   child: Row(
@@ -1713,7 +1842,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+                                  border: Border.all(
+                                    color: Color.fromARGB(255, 122, 185, 203),
+                                    width: 2,
+                                  ),
                                 ),
                                 child: Center(
                                   child: Text(
@@ -1760,7 +1892,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: Color.fromARGB(255, 122, 185, 203),
-                                border: Border.all(color: AppTheme.textColor, width: 1),
+                                border: Border.all(
+                                  color: AppTheme.textColor,
+                                  width: 1,
+                                ),
                               ),
                               child: Row(
                                 children: [
@@ -1768,14 +1903,20 @@ Widget _buildImageWithRetry(String imageUrl) {
                                     width: 32,
                                     height: 32,
                                     decoration: BoxDecoration(
-                                      border: Border.all(color: AppTheme.textColor, width: 1),
+                                      border: Border.all(
+                                        color: AppTheme.textColor,
+                                        width: 1,
+                                      ),
                                     ),
-                                    child: _buildImageWithRetry(boundary.imageUrl),
+                                    child: _buildImageWithRetry(
+                                      boundary.imageUrl,
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           boundary.name.toUpperCase(),
@@ -1801,7 +1942,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
                                       color: AppTheme.textColor,
-                                      border: Border.all(color: AppTheme.textColor, width: 1),
+                                      border: Border.all(
+                                        color: AppTheme.textColor,
+                                        width: 1,
+                                      ),
                                     ),
                                     child: Text(
                                       'CLAIMED',
@@ -1824,7 +1968,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                   child: GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 16,
+                      ),
                       decoration: BoxDecoration(
                         color: Color.fromARGB(255, 122, 185, 203),
                         border: Border.all(color: AppTheme.textColor, width: 2),
@@ -1851,8 +1998,6 @@ Widget _buildImageWithRetry(String imageUrl) {
     );
   }
 
-
- 
   void _showRetroEventInfo() {
     if (currentEvent == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1861,7 +2006,10 @@ Widget _buildImageWithRetry(String imageUrl) {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: AppTheme.primaryColor,
-              border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 1),
+              border: Border.all(
+                color: Color.fromARGB(255, 122, 185, 203),
+                width: 1,
+              ),
             ),
             child: Text(
               'EVENT DATA NOT AVAILABLE',
@@ -1893,7 +2041,10 @@ Widget _buildImageWithRetry(String imageUrl) {
           child: Container(
             decoration: BoxDecoration(
               color: AppTheme.primaryColor,
-              border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+              border: Border.all(
+                color: Color.fromARGB(255, 122, 185, 203),
+                width: 2,
+              ),
             ),
             child: Column(
               children: [
@@ -1902,7 +2053,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                   decoration: BoxDecoration(
                     color: AppTheme.textColor,
                     border: Border(
-                      bottom: BorderSide(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+                      bottom: BorderSide(
+                        color: Color.fromARGB(255, 122, 185, 203),
+                        width: 2,
+                      ),
                     ),
                   ),
                   child: Text(
@@ -1921,16 +2075,43 @@ Widget _buildImageWithRetry(String imageUrl) {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildRetroInfoRow('NAME', currentEvent!.name.toUpperCase()),
-                        _buildRetroInfoRow('DESCRIPTION', currentEvent!.description.toUpperCase()),
-                        _buildRetroInfoRow('VENUE', currentEvent!.venueName.toUpperCase()),
-                        _buildRetroInfoRow('TOTAL NFTS', '${currentEvent!.boundaries.length}'),
+                        _buildRetroInfoRow(
+                          'NAME',
+                          currentEvent!.name.toUpperCase(),
+                        ),
+                        _buildRetroInfoRow(
+                          'DESCRIPTION',
+                          currentEvent!.description.toUpperCase(),
+                        ),
+                        _buildRetroInfoRow(
+                          'VENUE',
+                          currentEvent!.venueName.toUpperCase(),
+                        ),
+                        _buildRetroInfoRow(
+                          'TOTAL NFTS',
+                          '${currentEvent!.boundaries.length}',
+                        ),
                         _buildRetroInfoRow('CLAIMED', '$claimedCount'),
-                        _buildRetroInfoRow('EVENT CODE', currentEvent!.eventCode.toUpperCase()),
+                        _buildRetroInfoRow(
+                          'EVENT CODE',
+                          currentEvent!.eventCode.toUpperCase(),
+                        ),
                         if (currentEvent!.startDate != null)
-                          _buildRetroInfoRow('START', currentEvent!.startDate.toString().substring(0, 16).toUpperCase()),
+                          _buildRetroInfoRow(
+                            'START',
+                            currentEvent!.startDate
+                                .toString()
+                                .substring(0, 16)
+                                .toUpperCase(),
+                          ),
                         if (currentEvent!.endDate != null)
-                          _buildRetroInfoRow('END', currentEvent!.endDate.toString().substring(0, 16).toUpperCase()),
+                          _buildRetroInfoRow(
+                            'END',
+                            currentEvent!.endDate
+                                .toString()
+                                .substring(0, 16)
+                                .toUpperCase(),
+                          ),
                       ],
                     ),
                   ),
@@ -1940,7 +2121,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                   child: GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 16,
+                      ),
                       decoration: BoxDecoration(
                         color: Color.fromARGB(255, 122, 185, 203),
                         border: Border.all(color: AppTheme.textColor, width: 2),
@@ -2007,17 +2191,17 @@ Widget _buildImageWithRetry(String imageUrl) {
   void _showImageDebugInfo() {
     try {
       print('=== SHOWING IMAGE DEBUG INFO ===');
-      
+
       if (currentEvent == null) {
         print('No current event to debug');
         return;
       }
-      
+
       print('Current event: ${currentEvent!.name}');
       print('Event image URL: ${currentEvent!.eventImageUrl}');
       print('Boundaries count: ${currentEvent!.boundaries.length}');
       print('AR Elements count: ${arElements.length}');
-      
+
       // Show debug info in UI
       showDialog(
         context: context,
@@ -2033,7 +2217,10 @@ Widget _buildImageWithRetry(String imageUrl) {
             child: Container(
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor,
-                border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+                border: Border.all(
+                  color: Color.fromARGB(255, 122, 185, 203),
+                  width: 2,
+                ),
               ),
               child: Column(
                 children: [
@@ -2042,7 +2229,10 @@ Widget _buildImageWithRetry(String imageUrl) {
                     decoration: BoxDecoration(
                       color: AppTheme.textColor,
                       border: Border(
-                        bottom: BorderSide(color: Color.fromARGB(255, 122, 185, 203), width: 2),
+                        bottom: BorderSide(
+                          color: Color.fromARGB(255, 122, 185, 203),
+                          width: 2,
+                        ),
                       ),
                     ),
                     child: Text(
@@ -2062,12 +2252,21 @@ Widget _buildImageWithRetry(String imageUrl) {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildDebugRow('Event Name', currentEvent!.name),
-                          _buildDebugRow('Event Image URL', currentEvent!.eventImageUrl ?? 'NULL'),
-                          _buildDebugRow('Total Boundaries', '${currentEvent!.boundaries.length}'),
-                          _buildDebugRow('AR Elements Visible', '${arElements.length}'),
+                          _buildDebugRow(
+                            'Event Image URL',
+                            currentEvent!.eventImageUrl ?? 'NULL',
+                          ),
+                          _buildDebugRow(
+                            'Total Boundaries',
+                            '${currentEvent!.boundaries.length}',
+                          ),
+                          _buildDebugRow(
+                            'AR Elements Visible',
+                            '${arElements.length}',
+                          ),
                           _buildDebugRow('Claimed Count', '$claimedCount'),
                           const SizedBox(height: 16),
-                          
+
                           // Show each boundary's image info
                           Text(
                             'BOUNDARY IMAGES:',
@@ -2079,29 +2278,60 @@ Widget _buildImageWithRetry(String imageUrl) {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          
-                          ...currentEvent!.boundaries.map((boundary) => 
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Color.fromARGB(255, 122, 185, 203),
-                                border: Border.all(color: AppTheme.textColor, width: 1),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildDebugRow('Name', boundary.name),
-                                  _buildDebugRow('Image URL', boundary.imageUrl),
-                                  _buildDebugRow('URL Type', boundary.imageUrl.runtimeType.toString()),
-                                  _buildDebugRow('Starts with http', boundary.imageUrl.startsWith('http').toString()),
-                                  _buildDebugRow('Starts with https', boundary.imageUrl.startsWith('https').toString()),
-                                  _buildDebugRow('Contains supabase', boundary.imageUrl.contains('supabase').toString()),
-                                  _buildDebugRow('Is Claimed', boundary.isClaimed.toString()),
-                                ],
-                              ),
-                            ),
-                          ).toList(),
+
+                          ...currentEvent!.boundaries
+                              .map(
+                                (boundary) => Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Color.fromARGB(255, 122, 185, 203),
+                                    border: Border.all(
+                                      color: AppTheme.textColor,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildDebugRow('Name', boundary.name),
+                                      _buildDebugRow(
+                                        'Image URL',
+                                        boundary.imageUrl,
+                                      ),
+                                      _buildDebugRow(
+                                        'URL Type',
+                                        boundary.imageUrl.runtimeType
+                                            .toString(),
+                                      ),
+                                      _buildDebugRow(
+                                        'Starts with http',
+                                        boundary.imageUrl
+                                            .startsWith('http')
+                                            .toString(),
+                                      ),
+                                      _buildDebugRow(
+                                        'Starts with https',
+                                        boundary.imageUrl
+                                            .startsWith('https')
+                                            .toString(),
+                                      ),
+                                      _buildDebugRow(
+                                        'Contains supabase',
+                                        boundary.imageUrl
+                                            .contains('supabase')
+                                            .toString(),
+                                      ),
+                                      _buildDebugRow(
+                                        'Is Claimed',
+                                        boundary.isClaimed.toString(),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
                         ],
                       ),
                     ),
@@ -2111,10 +2341,16 @@ Widget _buildImageWithRetry(String imageUrl) {
                     child: GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 16,
+                        ),
                         decoration: BoxDecoration(
                           color: Color.fromARGB(255, 122, 185, 203),
-                          border: Border.all(color: AppTheme.textColor, width: 2),
+                          border: Border.all(
+                            color: AppTheme.textColor,
+                            width: 2,
+                          ),
                         ),
                         child: Center(
                           child: Text(
@@ -2161,7 +2397,10 @@ Widget _buildImageWithRetry(String imageUrl) {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: AppTheme.primaryColor,
-              border: Border.all(color: Color.fromARGB(255, 122, 185, 203), width: 1),
+              border: Border.all(
+                color: Color.fromARGB(255, 122, 185, 203),
+                width: 1,
+              ),
             ),
             child: Text(
               value,
@@ -2190,19 +2429,19 @@ Widget _buildImageWithRetry(String imageUrl) {
     arService.onVisibleBoundariesUpdate = null;
     arService.onClaimedBoundariesUpdate = null;
     arService.onPositionUpdate = null;
-    
+
     _arUpdateTimer?.cancel();
     _gyroscopeSubscription?.cancel();
     _magnetometerSubscription?.cancel();
-    
+
     confettiController.dispose();
     pulseController.dispose();
     scanlineController.dispose();
     _cameraController?.dispose();
-    
+
     _nftImageCache.clear();
     _imageCacheTimestamp.clear();
-    
+
     arService.dispose();
     super.dispose();
   }

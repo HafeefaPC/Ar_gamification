@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:reown_appkit/reown_appkit.dart';
-import 'dart:typed_data';
+
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
@@ -53,7 +53,7 @@ class SmartContractService {
       'hasSession': _appKitModal?.session != null,
       'sessionTopic': _appKitModal?.session?.topic,
       'chainId': _appKitModal?.selectedChain?.chainId,
-      'walletName': _appKitModal?.session?.peer?.metadata?.name,
+      'walletName': _appKitModal?.session?.peer?.metadata.name,
     };
   }
   

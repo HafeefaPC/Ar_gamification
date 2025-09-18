@@ -219,24 +219,3 @@ class _WalletConnectionWrapperState extends ConsumerState<WalletConnectionWrappe
   }
 }
 
-/// A widget that shows wallet connection status
-
-  // Helper method to get chain name from chain ID
-  String _getChainName(String chainId) {
-    switch (chainId) {
-      case '1':
-        return 'ETH Mainnet';
-      case '42161':
-        return 'Arbitrum One';
-      case '421614':
-        return 'Arbitrum Sepolia';
-      case '137':
-        return 'Polygon';
-      case '56':
-        return 'BNB Chain';
-      case '43114':
-        return 'Avalanche';
-      default:
-        return 'Chain $chainId';
-    }
-  }

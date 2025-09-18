@@ -16,6 +16,7 @@ class SupabaseService {
   void verifyConfiguration() {
     try {
       final client = _client;
+      // ignore: unnecessary_null_comparison
       print('Client initialized: ${client != null}');
       print('Auth state: ${client.auth.currentSession != null ? "Authenticated" : "Not authenticated"}');
     } catch (e) {
@@ -34,7 +35,7 @@ class SupabaseService {
       
       // Try to access the auth endpoint
       final response = await _client.auth.signInAnonymously();
-      print('Basic connectivity test successful');
+      print('Basic connectivity test successful: ${response.user?.id}');
       return true;
     } catch (e) {
       print('=== BASIC CONNECTIVITY TEST FAILED ===');
@@ -254,6 +255,7 @@ class SupabaseService {
     try {
       print('Testing Supabase connection...');
       verifyConfiguration();
+      // ignore: unnecessary_null_comparison
       print('Client initialized: ${_client != null}');
       print('Current user: ${_client.auth.currentUser}');
       print('Current session: ${_client.auth.currentSession}');
