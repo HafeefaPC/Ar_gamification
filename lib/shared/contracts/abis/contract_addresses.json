@@ -1,0 +1,9 @@
+{
+  "network": "somniaTestnet",
+  "chainId": 50312,
+  "contracts": {
+    "EventFactory": "0xf9CF13b978A71113992De2A0373fE76d3B64B6dc",
+    "BoundaryNFT": "0xbac9dBf16337cAC4b8aBAef3941615e57dB37073",
+    "ClaimVerification": "0xB6Ba7b7501D5F6D71213B0f75f7b8a9eFc3e8507"
+  }
+}
