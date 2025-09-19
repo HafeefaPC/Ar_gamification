@@ -53,7 +53,7 @@ An innovative Flutter application that combines **Augmented Reality (AR)** with 
 
 ## 📐 Technical Architecture
 
-![Architecture Diagram](docs/architecture.png)
+![Architecture Diagram](docs/architecture.jpg)
 
 **Flow**:
 1. Player opens AR app → fetches geofenced tokens from Supabase  
