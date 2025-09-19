@@ -6,16 +6,11 @@
     "build": "hardhat compile",
     "test": "hardhat test",
     "deploy:somnia-testnet": "hardhat run scripts/deploy.js --network somniaTestnet",
-    "deploy:arbitrum-sepolia": "hardhat run scripts/deploy.js --network arbitrumSepolia",
-    "deploy:fuji": "hardhat run scripts/deploy.js --network fuji",
     "deploy:local": "hardhat run scripts/deploy.js --network localhost",
-    "deploy:avalanche": "hardhat run scripts/deploy.js --network avalanche",
-    "extract-abis": "node scripts/extract-abis.js",
-    "verify": "hardhat verify --network arbitrumSepolia",
+    "extract-abis": "node scripts/extract-abis.js", 
     "verify:somnia-testnet": "hardhat verify --network somniaTestnet",
-    "verify:arbitrum-sepolia": "hardhat verify --network arbitrumSepolia",
-    "verify:fuji": "hardhat verify --network fuji",
-    "verify:avalanche": "hardhat verify --network avalanche",
+    
+
     "clean": "hardhat clean",
     "reset": "hardhat clean && hardhat compile"
   },

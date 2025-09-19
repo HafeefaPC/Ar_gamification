@@ -4,9 +4,6 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY || "3009eef2ac66c793320e1ee0cecdd2ae
 const SOMNIA_TESTNET_RPC_URL = process.env.SOMNIA_TESTNET_RPC_URL || "https://dream-rpc.somnia.network";
 const SOMNIA_MAINNET_RPC_URL = process.env.SOMNIA_MAINNET_RPC_URL || "https://api.infra.mainnet.somnia.network/";
 
-const ARBISCAN_API_KEY = process.env.ARBISCAN_API_KEY || "";
-const AVALANCHE_RPC_URL = process.env.AVALANCHE_RPC_URL || "https://api.avax-test.network/ext/bc/C/rpc";
-const SNOWTRACE_API_KEY = process.env.SNOWTRACE_API_KEY || "";
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
